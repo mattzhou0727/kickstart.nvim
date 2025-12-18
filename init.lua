@@ -175,11 +175,11 @@ vim.o.confirm = true
 -- Short keymaps for the commands:
 local opts = { buffer = bufnr, noremap = true, silent = true }
 vim.keymap.set('n', '<leader>oi', function()
-vim.cmd('LspTypescriptSourceAction')
+  vim.cmd 'LspTypescriptSourceAction'
 end, vim.tbl_extend('force', opts, { desc = 'Organize Imports / Source Actions' }))
 
 vim.keymap.set('n', '<leader>gd', function()
-vim.cmd('LspTypescriptGoToSourceDefinition')
+  vim.cmd 'LspTypescriptGoToSourceDefinition'
 end, vim.tbl_extend('force', opts, { desc = 'Go to Source Definition' }))
 
 -- Clear highlights on search when pressing <Esc> in normal mode
@@ -259,17 +259,17 @@ rtp:prepend(lazypath)
 --
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
-{
-  'windwp/nvim-autopairs',
-  event = 'InsertEnter',
-  config = function()
-    require('nvim-autopairs').setup({
-      check_ts = true,         -- Enable treesitter integration (better context-aware pairing)
-      disable_filetype = { 'TelescopePrompt', 'vim' },
-      fast_wrap = {},
-    })
-  end,
-},
+  {
+    'windwp/nvim-autopairs',
+    event = 'InsertEnter',
+    config = function()
+      require('nvim-autopairs').setup {
+        check_ts = true, -- Enable treesitter integration (better context-aware pairing)
+        disable_filetype = { 'TelescopePrompt', 'vim' },
+        fast_wrap = {},
+      }
+    end,
+  },
 
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   -- 'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
@@ -724,43 +724,43 @@ require('lazy').setup({
           },
         },
         ts_ls = {
-  init_options = { hostInfo = 'neovim' },
-  on_attach = function(client, bufnr)
-    -- Create user commands for ts_ls features
-    vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptSourceAction', function()
-      local source_actions = vim.tbl_filter(function(action)
-        return vim.startswith(action, 'source.')
-      end, client.server_capabilities.codeActionProvider.codeActionKinds)
+          init_options = { hostInfo = 'neovim' },
+          on_attach = function(client, bufnr)
+            -- Create user commands for ts_ls features
+            vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptSourceAction', function()
+              local source_actions = vim.tbl_filter(function(action)
+                return vim.startswith(action, 'source.')
+              end, client.server_capabilities.codeActionProvider.codeActionKinds)
 
-      vim.lsp.buf.code_action({
-        context = {
-          only = source_actions,
-          diagnostics = {},
+              vim.lsp.buf.code_action {
+                context = {
+                  only = source_actions,
+                  diagnostics = {},
+                },
+              }
+            end, {})
+
+            vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptGoToSourceDefinition', function()
+              local win = vim.api.nvim_get_current_win()
+              local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
+              client:exec_cmd({
+                command = '_typescript.goToSourceDefinition',
+                title = 'Go to source definition',
+                arguments = { params.textDocument.uri, params.position },
+              }, { bufnr = bufnr }, function(err, result)
+                if err then
+                  vim.notify('Go to source definition failed: ' .. err.message, vim.log.levels.ERROR)
+                  return
+                end
+                if not result or vim.tbl_isempty(result) then
+                  vim.notify('No source definition found', vim.log.levels.INFO)
+                  return
+                end
+                vim.lsp.util.show_document(result[1], client.offset_encoding, { focus = true })
+              end)
+            end, { desc = 'Go to source definition' })
+          end,
         },
-      })
-    end, {})
-
-    vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptGoToSourceDefinition', function()
-      local win = vim.api.nvim_get_current_win()
-      local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
-      client:exec_cmd({
-        command = '_typescript.goToSourceDefinition',
-        title = 'Go to source definition',
-        arguments = { params.textDocument.uri, params.position },
-      }, { bufnr = bufnr }, function(err, result)
-        if err then
-          vim.notify('Go to source definition failed: ' .. err.message, vim.log.levels.ERROR)
-          return
-        end
-        if not result or vim.tbl_isempty(result) then
-          vim.notify('No source definition found', vim.log.levels.INFO)
-          return
-        end
-        vim.lsp.util.show_document(result[1], client.offset_encoding, { focus = true })
-      end)
-    end, { desc = 'Go to source definition' })
-  end,
-},
       }
 
       -- Ensure the servers and tools above are installed
@@ -957,14 +957,14 @@ require('lazy').setup({
   --         comments = { italic = false }, -- Disable italics in comments
   --       },
   --     }
---
+  --
   --     -- Load the colorscheme here.
   --     -- Like many other themes, this one has different styles, and you could load
   --     -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
   --     vim.cmd.colorscheme 'tokyonight-night'
   --   end,
   -- },
-  
+
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
@@ -976,13 +976,13 @@ require('lazy').setup({
     config = function()
       ---@diagnostic disable-next-line: missing-fields
       require('catppuccin').setup {
-        flavour = "auto", -- latte, frappe, macchiato, mocha
+        flavour = 'auto', -- latte, frappe, macchiato, mocha
         background = { -- :h background
-          light = "latte",
-          dark = "mocha",
+          light = 'latte',
+          dark = 'mocha',
         },
         styles = {
-          comments = { "italic" },
+          comments = { 'italic' },
         },
         integrations = {
           cmp = true,
@@ -991,8 +991,8 @@ require('lazy').setup({
           notify = true,
           mini = {
             enabled = true,
-            indentscope_color = "",
-          }
+            indentscope_color = '',
+          },
         },
       }
       vim.cmd.colorscheme 'catppuccin'

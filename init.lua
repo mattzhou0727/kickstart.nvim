@@ -152,6 +152,10 @@ vim.o.splitbelow = true
 vim.o.list = true
 vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
+vim.opt.tabstop = 2
+vim.opt.shiftwidth = 2
+vim.opt.softtabstop = 2
+
 -- Preview substitutions live, as you type!
 vim.o.inccommand = 'split'
 
@@ -168,6 +172,15 @@ vim.o.confirm = true
 
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
+-- Short keymaps for the commands:
+local opts = { buffer = bufnr, noremap = true, silent = true }
+vim.keymap.set('n', '<leader>oi', function()
+vim.cmd('LspTypescriptSourceAction')
+end, vim.tbl_extend('force', opts, { desc = 'Organize Imports / Source Actions' }))
+
+vim.keymap.set('n', '<leader>gd', function()
+vim.cmd('LspTypescriptGoToSourceDefinition')
+end, vim.tbl_extend('force', opts, { desc = 'Go to Source Definition' }))
 
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
@@ -246,8 +259,20 @@ rtp:prepend(lazypath)
 --
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
+{
+  'windwp/nvim-autopairs',
+  event = 'InsertEnter',
+  config = function()
+    require('nvim-autopairs').setup({
+      check_ts = true,         -- Enable treesitter integration (better context-aware pairing)
+      disable_filetype = { 'TelescopePrompt', 'vim' },
+      fast_wrap = {},
+    })
+  end,
+},
+
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
-  'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
+  -- 'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
@@ -698,6 +723,44 @@ require('lazy').setup({
             },
           },
         },
+        ts_ls = {
+  init_options = { hostInfo = 'neovim' },
+  on_attach = function(client, bufnr)
+    -- Create user commands for ts_ls features
+    vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptSourceAction', function()
+      local source_actions = vim.tbl_filter(function(action)
+        return vim.startswith(action, 'source.')
+      end, client.server_capabilities.codeActionProvider.codeActionKinds)
+
+      vim.lsp.buf.code_action({
+        context = {
+          only = source_actions,
+          diagnostics = {},
+        },
+      })
+    end, {})
+
+    vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptGoToSourceDefinition', function()
+      local win = vim.api.nvim_get_current_win()
+      local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
+      client:exec_cmd({
+        command = '_typescript.goToSourceDefinition',
+        title = 'Go to source definition',
+        arguments = { params.textDocument.uri, params.position },
+      }, { bufnr = bufnr }, function(err, result)
+        if err then
+          vim.notify('Go to source definition failed: ' .. err.message, vim.log.levels.ERROR)
+          return
+        end
+        if not result or vim.tbl_isempty(result) then
+          vim.notify('No source definition found', vim.log.levels.INFO)
+          return
+        end
+        vim.lsp.util.show_document(result[1], client.offset_encoding, { focus = true })
+      end)
+    end, { desc = 'Go to source definition' })
+  end,
+},
       }
 
       -- Ensure the servers and tools above are installed
@@ -768,6 +831,10 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        typescript = { 'prettierd', 'prettier', stop_after_first = true },
+        typescriptreact = { 'prettierd', 'prettier', stop_after_first = true },
+        javascript = { 'prettierd', 'prettier', stop_after_first = true },
+        javascriptreact = { 'prettierd', 'prettier', stop_after_first = true },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
@@ -876,25 +943,59 @@ require('lazy').setup({
     },
   },
 
+  -- { -- You can easily change to a different colorscheme.
+  --   -- Change the name of the colorscheme plugin below, and then
+  --   -- change the command in the config to whatever the name of that colorscheme is.
+  --   --
+  --   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
+  --   'folke/tokyonight.nvim',
+  --   priority = 999, -- Make sure to load this before all the other start plugins.
+  --   config = function()
+  --     ---@diagnostic disable-next-line: missing-fields
+  --     require('tokyonight').setup {
+  --       styles = {
+  --         comments = { italic = false }, -- Disable italics in comments
+  --       },
+  --     }
+--
+  --     -- Load the colorscheme here.
+  --     -- Like many other themes, this one has different styles, and you could load
+  --     -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
+  --     vim.cmd.colorscheme 'tokyonight-night'
+  --   end,
+  -- },
+  
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
+    'catppuccin/nvim',
+    name = 'catppuccin',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     config = function()
       ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
+      require('catppuccin').setup {
+        flavour = "auto", -- latte, frappe, macchiato, mocha
+        background = { -- :h background
+          light = "latte",
+          dark = "mocha",
+        },
         styles = {
-          comments = { italic = false }, -- Disable italics in comments
+          comments = { "italic" },
+        },
+        integrations = {
+          cmp = true,
+          gitsign = true,
+          nvmtree = true,
+          notify = true,
+          mini = {
+            enabled = true,
+            indentscope_color = "",
+          }
         },
       }
-
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'catppuccin'
     end,
   },
 

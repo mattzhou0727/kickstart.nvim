@@ -174,13 +174,14 @@ vim.o.confirm = true
 --  See `:help vim.keymap.set()`
 -- Short keymaps for the commands:
 local opts = { buffer = bufnr, noremap = true, silent = true }
-vim.keymap.set('n', '<leader>oi', function()
-  vim.cmd 'LspTypescriptSourceAction'
-end, vim.tbl_extend('force', opts, { desc = 'Organize Imports / Source Actions' }))
 
-vim.keymap.set('n', '<leader>gd', function()
-  vim.cmd 'LspTypescriptGoToSourceDefinition'
-end, vim.tbl_extend('force', opts, { desc = 'Go to Source Definition' }))
+-- vim.keymap.set('n', '<leader>oi', function()
+--   vim.cmd 'LspTypescriptSourceAction'
+-- end, vim.tbl_extend('force', opts, { desc = 'Organize Imports / Source Actions' }))
+
+-- vim.keymap.set('n', '<leader>gd', function()
+--   vim.cmd 'LspTypescriptGoToSourceDefinition'
+-- end, vim.tbl_extend('force', opts, { desc = 'Go to Source Definition' }))
 
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
@@ -723,43 +724,63 @@ require('lazy').setup({
             },
           },
         },
-        ts_ls = {
-          init_options = { hostInfo = 'neovim' },
-          on_attach = function(client, bufnr)
-            -- Create user commands for ts_ls features
-            vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptSourceAction', function()
-              local source_actions = vim.tbl_filter(function(action)
-                return vim.startswith(action, 'source.')
-              end, client.server_capabilities.codeActionProvider.codeActionKinds)
-
-              vim.lsp.buf.code_action {
-                context = {
-                  only = source_actions,
-                  diagnostics = {},
-                },
-              }
-            end, {})
-
-            vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptGoToSourceDefinition', function()
-              local win = vim.api.nvim_get_current_win()
-              local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
-              client:exec_cmd({
-                command = '_typescript.goToSourceDefinition',
-                title = 'Go to source definition',
-                arguments = { params.textDocument.uri, params.position },
-              }, { bufnr = bufnr }, function(err, result)
-                if err then
-                  vim.notify('Go to source definition failed: ' .. err.message, vim.log.levels.ERROR)
-                  return
-                end
-                if not result or vim.tbl_isempty(result) then
-                  vim.notify('No source definition found', vim.log.levels.INFO)
-                  return
-                end
-                vim.lsp.util.show_document(result[1], client.offset_encoding, { focus = true })
-              end)
-            end, { desc = 'Go to source definition' })
-          end,
+        --  ts_ls = { enabled = false },
+        -- ts_ls = {
+        --   init_options = { hostInfo = 'neovim' },
+        --   on_attach = function(client, bufnr)
+        --     -- Create user commands for ts_ls features
+        --     vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptSourceAction', function()
+        --       local source_actions = vim.tbl_filter(function(action)
+        --         return vim.startswith(action, 'source.')
+        --       end, client.server_capabilities.codeActionProvider.codeActionKinds)
+        --
+        --       vim.lsp.buf.code_action {
+        --         context = {
+        --           only = source_actions,
+        --           diagnostics = {},
+        --         },
+        --       }
+        --     end, {})
+        --
+        --     vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptGoToSourceDefinition', function()
+        --       local win = vim.api.nvim_get_current_win()
+        --       local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
+        --       client:exec_cmd({
+        --         command = '_typescript.goToSourceDefinition',
+        --         title = 'Go to source definition',
+        --         arguments = { params.textDocument.uri, params.position },
+        --       }, { bufnr = bufnr }, function(err, result)
+        --         if err then
+        --           vim.notify('Go to source definition failed: ' .. err.message, vim.log.levels.ERROR)
+        --           return
+        --         end
+        --         if not result or vim.tbl_isempty(result) then
+        --           vim.notify('No source definition found', vim.log.levels.INFO)
+        --           return
+        --         end
+        --         vim.lsp.util.show_document(result[1], client.offset_encoding, { focus = true })
+        --       end)
+        --     end, { desc = 'Go to source definition' })
+        --   end,
+        -- },
+        tsgo = {
+          cmd = { 'tsgo', '--lsp', '--stdio' },
+          filetypes = {
+            'javascript',
+            'javascriptreact',
+            'javascript.jsx',
+            'typescript',
+            'typescriptreact',
+            'typescript.tsx',
+          },
+          root_markers = {
+            'tsconfig.json',
+            'jsconfig.json',
+            'package.json',
+            '.git',
+            'tsconfig.base.json',
+          },
+          enabled = true,
         },
       }
 
@@ -787,6 +808,9 @@ require('lazy').setup({
         automatic_installation = false,
         handlers = {
           function(server_name)
+            if server_name == 'ts_ls' then
+              return
+            end
             local server = servers[server_name] or {}
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling

@@ -724,7 +724,6 @@ require('lazy').setup({
             },
           },
         },
-        --  ts_ls = { enabled = false },
         -- ts_ls = {
         --   init_options = { hostInfo = 'neovim' },
         --   on_attach = function(client, bufnr)
@@ -808,6 +807,7 @@ require('lazy').setup({
         automatic_installation = false,
         handlers = {
           function(server_name)
+            -- Disable the ts_ls since we've installed the tsgo
             if server_name == 'ts_ls' then
               return
             end
